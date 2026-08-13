@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="new_note"
+        android:enabled="true"
+        android:icon="@drawable/ic_add"
+        android:shortcutShortLabel="@string/shortcut_note"
+        android:shortcutLongLabel="@string/shortcut_note">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="notesup://new"
+            android:targetPackage="com.notesup.app"
+            android:targetClass="com.notesup.app.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="new_list"
+        android:enabled="true"
+        android:icon="@drawable/ic_checklist"
+        android:shortcutShortLabel="@string/shortcut_list"
+        android:shortcutLongLabel="@string/shortcut_list">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="notesup://new?type=checklist"
+            android:targetPackage="com.notesup.app"
+            android:targetClass="com.notesup.app.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="new_ink"
+        android:enabled="true"
+        android:icon="@drawable/ic_draw"
+        android:shortcutShortLabel="@string/shortcut_ink"
+        android:shortcutLongLabel="@string/shortcut_ink">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="notesup://new?type=ink"
+            android:targetPackage="com.notesup.app"
+            android:targetClass="com.notesup.app.MainActivity" />
+    </shortcut>
+
+    <share-target android:targetClass="com.notesup.app.MainActivity">
+        <data android:mimeType="text/plain" />
+        <data android:mimeType="image/*" />
+        <category android:name="com.notesup.app.category.SHARE" />
+    </share-target>
+</shortcuts>
