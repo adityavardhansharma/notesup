@@ -1,0 +1,3 @@
+-keep class com.notesup.app.** { *; }
+-dontwarn com.clerk.**
+-dontwarn dev.convex.**

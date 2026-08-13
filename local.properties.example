@@ -1,0 +1,9 @@
+# Copy to local.properties (gitignored). Never commit real values.
+sdk.dir=C:\\Users\\asus\\AppData\\Local\\Android\\Sdk
+
+# Clerk publishable key only (pk_test_... or pk_live_...). Never sk_...
+CLERK_PK=
+
+# Convex deployment URLs (not admin / deploy keys)
+CONVEX_URL_DEV=
+CONVEX_URL_PROD=
