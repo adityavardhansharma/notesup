@@ -4,11 +4,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.notesup.app.data.prefs.NotesupPrefs
 import com.notesup.app.ui.account.AboutScreen
@@ -29,6 +32,7 @@ import com.notesup.app.ui.onboarding.WelcomeScreen
 import com.notesup.app.ui.project.ProjectScreen
 import com.notesup.app.ui.search.SearchScreen
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 @Composable
@@ -42,6 +46,7 @@ fun NotesupNav(
     val start: NavKey = if (onboarded) Home else Welcome
     val backStack = rememberNavBackStack(start)
     var account by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     fun push(key: NavKey) {
         backStack.add(key)
@@ -49,18 +54,25 @@ fun NotesupNav(
     fun pop() {
         if (backStack.size > 1) backStack.removeLastOrNull()
     }
+    fun finishOnboarding() {
+        scope.launch {
+            prefs.setOnboardingDone(true)
+            backStack.add(Home)
+            while (backStack.size > 1) backStack.removeAt(0)
+        }
+    }
 
     NavDisplay(
         backStack = backStack,
         onBack = { pop() },
+        entryDecorators = listOf(
+            rememberSaveableStateHolderNavEntryDecorator(),
+            rememberViewModelStoreNavEntryDecorator(),
+        ),
         entryProvider = entryProvider {
             entry<Welcome> {
                 WelcomeScreen(
-                    onStartWriting = {
-                        runBlocking { prefs.setOnboardingDone(true) }
-                        backStack.clear()
-                        push(Home)
-                    },
+                    onStartWriting = ::finishOnboarding,
                     onSignIn = { push(Auth) },
                 )
             }
@@ -78,15 +90,16 @@ fun NotesupNav(
             entry<Auth> {
                 AuthScreen(
                     onBack = { pop() },
-                    onContinueWithout = {
-                        runBlocking { prefs.setOnboardingDone(true) }
-                        backStack.clear(); push(Home)
-                    },
+                    onContinueWithout = ::finishOnboarding,
                     onEmail = { push(AuthCode(it)) },
                 )
             }
             entry<AuthCode> { key ->
-                AuthCodeScreen(email = key.email, onBack = { pop() }, onVerify = { backStack.clear(); push(Home) })
+                AuthCodeScreen(
+                    email = key.email,
+                    onBack = { pop() },
+                    onVerify = { finishOnboarding() },
+                )
             }
             entry<Search> {
                 SearchScreen(onBack = { pop() }, onOpen = { push(Editor(it, false)) })
