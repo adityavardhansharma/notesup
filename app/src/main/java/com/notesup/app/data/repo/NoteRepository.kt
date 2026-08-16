@@ -89,8 +89,7 @@ class NoteRepository @Inject constructor(
             baseRev = 0,
             baseWriterId = null,
         )
-        save(note)
-        return note
+        return persistOrUnlock(note)
     }
 
     suspend fun save(note: Note) {
@@ -125,7 +124,7 @@ class NoteRepository @Inject constructor(
         val domain = entity.toDomain()
         if (!domain.locked) return true
         unlocked.value[id.raw]?.let { return true }
-        val blob = domain.lockCipher ?: return domain.blocks.isNotEmpty()
+        val blob = domain.lockCipher ?: return false
         return runCatching {
             val json = crypto.decrypt(blob).decodeToString()
             val blocks = com.notesup.app.data.local.Jsons.blocks.decodeFromString<List<Block>>(json)
@@ -134,13 +133,25 @@ class NoteRepository @Inject constructor(
         }.getOrDefault(false)
     }
 
+    /**
+     * Encrypt body into [Note.lockCipher] and blank the stored blocks.
+     * Throws if Keystore cannot encrypt so a locked row is never written as plaintext.
+     */
     private fun persistLocked(note: Note): Note {
         val json = com.notesup.app.data.local.Jsons.blocks.encodeToString(note.blocks)
-        val cipher = runCatching { crypto.encrypt(json.toByteArray()) }.getOrNull()
-        return if (cipher != null) {
-            note.copy(lockCipher = cipher, blocks = emptyList())
-        } else {
+        val cipher = crypto.encrypt(json.toByteArray())
+        return note.copy(lockCipher = cipher, blocks = emptyList())
+    }
+
+    private suspend fun persistOrUnlock(note: Note): Note {
+        return runCatching {
+            save(note)
             note
+        }.getOrElse { err ->
+            if (!note.locked) throw err
+            val open = note.copy(locked = false, lockCipher = null)
+            save(open)
+            open
         }
     }
 

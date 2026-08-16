@@ -42,8 +42,6 @@ class MainActivity : FragmentActivity() {
         enableEdgeToEdge()
         if (savedInstanceState == null) {
             launchLink.value = resolveLaunch(intent)
-        } else {
-            launchLink.value = intent?.dataString
         }
         setContent {
             val theme by prefs.theme.collectAsStateWithLifecycle(initialValue = "system")
