@@ -31,8 +31,10 @@ class MainActivity : FragmentActivity() {
         enableEdgeToEdge()
         handleShare(intent)
         setContent {
-            val theme = runBlocking { prefs.theme.first() }
-            val appTheme = runBlocking { prefs.appTheme.first() }
+            // Read persisted prefs once; a bare runBlocking here would re-block the
+            // main thread on every recomposition of the root.
+            val theme = androidx.compose.runtime.remember { runBlocking { prefs.theme.first() } }
+            val appTheme = androidx.compose.runtime.remember { runBlocking { prefs.appTheme.first() } }
             NotesupTheme(themePref = theme, appTheme = appTheme) {
                 NotesupNav(prefs = prefs, initialDeepLink = intent?.dataString)
             }

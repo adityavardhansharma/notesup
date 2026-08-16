@@ -31,24 +31,32 @@ class NoteCaptureActivity : FragmentActivity() {
     @Inject lateinit var notes: NoteRepository
     @Inject lateinit var prefs: NotesupPrefs
 
+    private var noteId: String? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         runBlocking { prefs.setOnboardingDone(true) }
-        val stylus = intent?.getBooleanExtra("android.intent.extra.USE_STYLUS_MODE", false) == true
-        val kind = if (stylus) NoteKind.INK else NoteKind.TEXT
-        val note = runBlocking { notes.create(kind) }
+        // Reuse the note created on first launch; recreating the activity (e.g. a
+        // rotation) must not spawn a second blank note.
+        val id = savedInstanceState?.getString(KEY_NOTE_ID) ?: run {
+            val stylus = intent?.getBooleanExtra("android.intent.extra.USE_STYLUS_MODE", false) == true
+            val kind = if (stylus) NoteKind.INK else NoteKind.TEXT
+            runBlocking { notes.create(kind) }.id.raw
+        }
+        noteId = id
         setContent {
-            val theme = runBlocking { prefs.theme.first() }
-            NotesupTheme(themePref = theme) {
+            val theme = androidx.compose.runtime.remember { runBlocking { prefs.theme.first() } }
+            val appTheme = androidx.compose.runtime.remember { runBlocking { prefs.appTheme.first() } }
+            NotesupTheme(themePref = theme, appTheme = appTheme) {
                 val vm: EditorViewModel = androidx.hilt.navigation.compose.hiltViewModel()
-                LaunchedEffect(note.id.raw) { vm.attach(note.id.raw) }
+                LaunchedEffect(id) { vm.attach(id) }
                 androidx.compose.foundation.layout.Column {
                     Row(Modifier.fillMaxWidth().height(64.dp), verticalAlignment = Alignment.CenterVertically) {
                         TextButton(onClick = { finish() }) { Text(stringResource(R.string.done)) }
                     }
                     EditorScreen(
-                        noteId = note.id.raw,
+                        noteId = id,
                         vm = vm,
                         created = true,
                         onBack = { finish() },
@@ -64,5 +72,14 @@ class NoteCaptureActivity : FragmentActivity() {
                 android.view.WindowManager.LayoutParams.FLAG_SECURE,
             )
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        noteId?.let { outState.putString(KEY_NOTE_ID, it) }
+    }
+
+    private companion object {
+        const val KEY_NOTE_ID = "noteId"
     }
 }
