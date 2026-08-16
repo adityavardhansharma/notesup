@@ -40,6 +40,7 @@
     <string name="sign_in_to_sync">Sign in to sync</string>
     <string name="sign_in_body">Notes stay on this phone until you do.</string>
     <string name="continue_google">Continue with Google</string>
+    <string name="google_unavailable">Google sign-in isn\'t available yet — use email instead.</string>
     <string name="continue_email">Continue</string>
     <string name="continue_without">Continue without an account</string>
     <string name="email_hint">Email</string>
