@@ -246,6 +246,16 @@
     <string name="language">Language</string>
     <string name="menu_paper">Paper</string>
     <string name="menu_type">Type</string>
+    <string name="add_item">Add item</string>
+    <string name="color_none">None</string>
+    <string name="font_roboto">Roboto Flex</string>
+    <string name="font_literata">Literata</string>
+    <string name="font_mono">JetBrains Mono</string>
+    <string name="font_atkinson">Atkinson Hyperlegible</string>
+    <string name="paper_blank">Blank</string>
+    <string name="paper_lines">Lines</string>
+    <string name="paper_dots">Dots</string>
+    <string name="paper_grid">Grid</string>
     <string name="email">Email</string>
     <string name="google">Google</string>
 </resources>

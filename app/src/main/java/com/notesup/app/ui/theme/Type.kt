@@ -111,6 +111,14 @@ fun notesupTypography(): Typography {
     )
 }
 
+/** Maps a persisted note font key to a concrete family. */
+fun noteFontFamily(font: String?): FontFamily = when (font) {
+    "literata" -> Literata
+    "jetbrains_mono", "mono" -> JetBrainsMono
+    "atkinson" -> Atkinson
+    else -> flex(400, 18f)
+}
+
 fun bodyNoteStyle(size: String, family: FontFamily = flex(400, 18f)) = TextStyle(
     fontFamily = family,
     fontWeight = FontWeight.Normal,
