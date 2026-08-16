@@ -85,10 +85,16 @@ fun HomeScreen(
                     Text(stringResource(R.string.n_selected, state.selected.size), style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.weight(1f))
                     IconButton(onClick = { haptics.confirm(); vm.pinSelected() }) { NuIcon(NotesupIcons.Pin, stringResource(R.string.cd_pin)) }
-                    IconButton(onClick = { }) { NuIcon(NotesupIcons.Move, stringResource(R.string.menu_move)) }
+                    val deletedLabel = stringResource(R.string.deleted_n, state.selected.size)
+                    val undoLabel = stringResource(R.string.undo)
                     IconButton(onClick = {
                         haptics.reject()
+                        val ids = state.selected.toList()
                         vm.deleteSelected()
+                        scope.launch {
+                            val res = snack.showSnackbar(deletedLabel, actionLabel = undoLabel)
+                            if (res == SnackbarResult.ActionPerformed) ids.forEach(vm::undoDelete)
+                        }
                     }) { NuIcon(NotesupIcons.Delete, stringResource(R.string.menu_delete)) }
                 }
             } else {
