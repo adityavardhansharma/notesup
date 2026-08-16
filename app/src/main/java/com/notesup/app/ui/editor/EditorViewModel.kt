@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 class EditorViewModel @Inject constructor(
     private val notes: NoteRepository,
     val prefs: NotesupPrefs,
+    @com.notesup.app.di.ApplicationScope private val appScope: kotlinx.coroutines.CoroutineScope,
 ) : ViewModel() {
     private val noteIdFlow = kotlinx.coroutines.flow.MutableStateFlow<NoteId?>(null)
 
@@ -57,19 +58,18 @@ class EditorViewModel @Inject constructor(
 
     @OptIn(FlowPreview::class)
     fun autosave() {
-        viewModelScope.launch {
-            val current = notes.get(requireId()) ?: return@launch
-            val title = titleState.text.toString()
+        // Snapshot the editable state synchronously, then persist on the application
+        // scope. Launching on viewModelScope would be cancelled the moment the editor
+        // is popped on back navigation, silently dropping the user's last edit.
+        val id = requireId()
+        val title = titleState.text.toString()
+        val fieldTexts = fields.mapValues { it.value.text.toString() }
+        appScope.launch {
+            val current = notes.get(id) ?: return@launch
             val blocks = current.blocks.map { b ->
                 when (b) {
-                    is Block.Paragraph -> {
-                        val t = fields[b.id.raw]?.text?.toString() ?: b.rich.text
-                        b.copy(rich = RichText.of(t))
-                    }
-                    is Block.Heading -> {
-                        val t = fields[b.id.raw]?.text?.toString() ?: b.text
-                        b.copy(text = t)
-                    }
+                    is Block.Paragraph -> b.copy(rich = RichText.of(fieldTexts[b.id.raw] ?: b.rich.text))
+                    is Block.Heading -> b.copy(text = fieldTexts[b.id.raw] ?: b.text)
                     else -> b
                 }
             }
