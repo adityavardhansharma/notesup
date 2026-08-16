@@ -45,6 +45,8 @@ fun ProjectEditSheet(
 ) {
     var name by remember { mutableStateOf(initialName) }
     var hue by remember { mutableIntStateOf(initialHue) }
+    var emoji by remember { mutableStateOf(initialEmoji) }
+    var pickEmoji by remember { mutableStateOf(false) }
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState()) {
         Column(Modifier.padding(20.dp).padding(bottom = 24.dp)) {
             Text(title ?: stringResource(R.string.new_project), style = MaterialTheme.typography.titleSmall)
@@ -56,7 +58,13 @@ fun ProjectEditSheet(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
             )
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
+            Text(
+                (emoji ?: "") + " " + stringResource(R.string.add_emoji),
+                modifier = Modifier.clickable { pickEmoji = true }.padding(vertical = 8.dp),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 (0..7).forEach { i ->
                     Box(
@@ -70,11 +78,17 @@ fun ProjectEditSheet(
             }
             Spacer(Modifier.height(24.dp))
             Button(
-                onClick = { onSave(name.trim(), hue, initialEmoji) },
+                onClick = { onSave(name.trim(), hue, emoji) },
                 enabled = name.isNotBlank(),
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = Stadium,
-            ) { Text(stringResource(R.string.create)) }
+            ) { Text(if (initialName.isNotBlank()) stringResource(R.string.save) else stringResource(R.string.create)) }
         }
+    }
+    if (pickEmoji) {
+        EmojiPickerSheet(
+            onDismiss = { pickEmoji = false },
+            onPick = { emoji = it; pickEmoji = false },
+        )
     }
 }

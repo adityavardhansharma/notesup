@@ -27,6 +27,9 @@ class NotesupPrefs(private val context: Context) {
         val defaultFont = stringPreferencesKey("default_font")
         val bodySize = stringPreferencesKey("body_size")
         val appTheme = stringPreferencesKey("app_theme")
+        val defaultKind = stringPreferencesKey("default_kind")
+        val lastSyncedAt = stringPreferencesKey("last_synced_at")
+        val widgetProjects = stringPreferencesKey("widget_projects")
     }
 
     val theme: Flow<String> = context.dataStore.data.map { it[Keys.theme] ?: "system" }
@@ -41,6 +44,8 @@ class NotesupPrefs(private val context: Context) {
     val defaultFont: Flow<String> = context.dataStore.data.map { it[Keys.defaultFont] ?: "roboto_flex" }
     val bodySize: Flow<String> = context.dataStore.data.map { it[Keys.bodySize] ?: "M" }
     val appTheme: Flow<String> = context.dataStore.data.map { it[Keys.appTheme] ?: "dynamic" }
+    val defaultKind: Flow<String> = context.dataStore.data.map { it[Keys.defaultKind] ?: "text" }
+    val lastSyncedAt: Flow<Long?> = context.dataStore.data.map { it[Keys.lastSyncedAt]?.toLongOrNull() }
 
     suspend fun installId(): String {
         val existing = context.dataStore.data.first()[Keys.installId]
@@ -96,5 +101,38 @@ class NotesupPrefs(private val context: Context) {
 
     suspend fun setAppTheme(value: String) {
         context.dataStore.edit { it[Keys.appTheme] = value }
+    }
+
+    suspend fun setDefaultKind(value: String) {
+        context.dataStore.edit { it[Keys.defaultKind] = value }
+    }
+
+    suspend fun setLastSyncedAt(value: Long?) {
+        context.dataStore.edit {
+            if (value == null) it.remove(Keys.lastSyncedAt) else it[Keys.lastSyncedAt] = value.toString()
+        }
+    }
+
+    suspend fun setWidgetProject(appWidgetId: Int, projectId: String?) {
+        context.dataStore.edit { prefs ->
+            val map = decodeWidgetMap(prefs[Keys.widgetProjects])
+            if (projectId == null) map.remove(appWidgetId.toString()) else map[appWidgetId.toString()] = projectId
+            prefs[Keys.widgetProjects] = map.entries.joinToString(";") { "${it.key}=${it.value}" }
+        }
+    }
+
+    fun widgetProject(appWidgetId: Int): Flow<String?> = context.dataStore.data.map { prefs ->
+        decodeWidgetMap(prefs[Keys.widgetProjects])[appWidgetId.toString()]
+    }
+
+    suspend fun widgetProjectNow(appWidgetId: Int): String? =
+        decodeWidgetMap(context.dataStore.data.first()[Keys.widgetProjects])[appWidgetId.toString()]
+
+    private fun decodeWidgetMap(raw: String?): MutableMap<String, String> {
+        if (raw.isNullOrBlank()) return mutableMapOf()
+        return raw.split(';').mapNotNull { part ->
+            val eq = part.indexOf('=')
+            if (eq <= 0) null else part.substring(0, eq) to part.substring(eq + 1)
+        }.toMap().toMutableMap()
     }
 }

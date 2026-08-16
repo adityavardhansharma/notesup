@@ -21,6 +21,7 @@ import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.encodeToString
 
 @Singleton
 class NoteRepository @Inject constructor(
@@ -28,7 +29,11 @@ class NoteRepository @Inject constructor(
     private val queue: SyncQueueDao,
     private val prefs: NotesupPrefs,
     private val widgets: WidgetUpdater,
+    private val crypto: com.notesup.app.data.crypto.NoteCrypto,
 ) {
+    private val unlocked = kotlinx.coroutines.flow.MutableStateFlow<Map<String, Note>>(emptyMap())
+
+    fun observeInboxCount(): Flow<Int> = notes.observeInboxCount()
     fun observeHome(): Flow<List<Note>> = notes.observeAlive().map { list -> list.map { it.toDomain() } }
     fun observePinned(): Flow<List<Note>> = notes.observePinned().map { list -> list.map { it.toDomain() } }
     fun observeRecent(): Flow<List<Note>> = notes.observeRecent().map { list -> list.map { it.toDomain() } }
@@ -36,9 +41,18 @@ class NoteRepository @Inject constructor(
     fun observeProject(id: ProjectId?): Flow<List<Note>> =
         notes.observeInProject(id?.raw).map { list -> list.map { it.toDomain() } }
 
-    fun observe(id: NoteId): Flow<Note?> = notes.observe(id.raw).map { it?.toDomain() }
+    fun observe(id: NoteId): Flow<Note?> = kotlinx.coroutines.flow.combine(
+        notes.observe(id.raw),
+        unlocked,
+    ) { entity, cache ->
+        val domain = entity?.toDomain() ?: return@combine null
+        if (domain.locked) cache[domain.id.raw] ?: domain else domain
+    }
 
-    suspend fun get(id: NoteId): Note? = notes.get(id.raw)?.toDomain()
+    suspend fun get(id: NoteId): Note? {
+        val domain = notes.get(id.raw)?.toDomain() ?: return null
+        return if (domain.locked) unlocked.value[domain.id.raw] ?: domain else domain
+    }
 
     suspend fun allAlive(): List<Note> = notes.observeAlive().first().map { it.toDomain() }
 
@@ -54,6 +68,7 @@ class NoteRepository @Inject constructor(
         val install = prefs.installId()
         val paper = prefs.defaultPaper.first()
         val font = prefs.defaultFont.first()
+        val lockNew = prefs.lockNew.first()
         val note = Note(
             id = NoteId.random(),
             remoteId = null,
@@ -61,7 +76,7 @@ class NoteRepository @Inject constructor(
             title = title,
             blocks = extraBlocks.ifEmpty { NoteOps.starterBlocks(kind) },
             pinned = false,
-            locked = false,
+            locked = lockNew,
             lockCipher = null,
             tint = 0,
             paper = paper,
@@ -80,11 +95,17 @@ class NoteRepository @Inject constructor(
 
     suspend fun save(note: Note) {
         val install = prefs.installId()
-        val bumped = note.copy(
+        val prepared = if (note.locked) persistLocked(note) else note.copy(lockCipher = null)
+        val bumped = prepared.copy(
             updatedAt = Instant.now(),
             rev = note.rev + 1,
             writerId = install,
         )
+        if (note.locked) {
+            unlocked.value = unlocked.value + (note.id.raw to note.copy(updatedAt = bumped.updatedAt, rev = bumped.rev, writerId = install))
+        } else {
+            unlocked.value = unlocked.value - note.id.raw
+        }
         notes.upsertWithFts(bumped.toEntity(), bumped.toFts())
         queue.enqueueLatest(
             SyncQueueEntity(
@@ -96,6 +117,31 @@ class NoteRepository @Inject constructor(
             ),
         )
         widgets.schedule()
+    }
+
+    /** Decrypt a locked note into the in-memory session cache. */
+    suspend fun unlockSession(id: NoteId): Boolean {
+        val entity = notes.get(id.raw) ?: return false
+        val domain = entity.toDomain()
+        if (!domain.locked) return true
+        unlocked.value[id.raw]?.let { return true }
+        val blob = domain.lockCipher ?: return domain.blocks.isNotEmpty()
+        return runCatching {
+            val json = crypto.decrypt(blob).decodeToString()
+            val blocks = com.notesup.app.data.local.Jsons.blocks.decodeFromString<List<Block>>(json)
+            unlocked.value = unlocked.value + (id.raw to domain.copy(blocks = blocks))
+            true
+        }.getOrDefault(false)
+    }
+
+    private fun persistLocked(note: Note): Note {
+        val json = com.notesup.app.data.local.Jsons.blocks.encodeToString(note.blocks)
+        val cipher = runCatching { crypto.encrypt(json.toByteArray()) }.getOrNull()
+        return if (cipher != null) {
+            note.copy(lockCipher = cipher, blocks = emptyList())
+        } else {
+            note
+        }
     }
 
     suspend fun setDeleted(id: NoteId, deleted: Boolean) {
@@ -124,6 +170,20 @@ class NoteRepository @Inject constructor(
     suspend fun emptyTrash() {
         notes.emptyTrash()
         widgets.schedule()
+    }
+
+    suspend fun hardDelete(id: NoteId) {
+        notes.deleteFts(id.raw)
+        notes.hardDelete(id.raw)
+        unlocked.value = unlocked.value - id.raw
+        widgets.schedule()
+    }
+
+    suspend fun moveToProject(ids: List<NoteId>, projectId: ProjectId?) {
+        ids.forEach { id ->
+            val current = get(id) ?: return@forEach
+            save(current.copy(projectId = projectId))
+        }
     }
 
     suspend fun applyPlainBody(id: NoteId, text: String) {

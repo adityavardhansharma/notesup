@@ -8,7 +8,7 @@ object MarkdownExport {
         append("# ").append(note.title.ifBlank { "Untitled" }).append('\n').append('\n')
         note.blocks.forEach { b ->
             when (b) {
-                is Block.Paragraph -> append(b.rich.text).append('\n').append('\n')
+                is Block.Paragraph -> append(com.notesup.app.domain.model.markdownFromRich(b.rich)).append('\n').append('\n')
                 is Block.Heading -> append("#".repeat(b.level)).append(' ').append(b.text).append('\n').append('\n')
                 is Block.Quote -> append("> ").append(b.text).append('\n').append('\n')
                 is Block.Divider -> append("---\n\n")

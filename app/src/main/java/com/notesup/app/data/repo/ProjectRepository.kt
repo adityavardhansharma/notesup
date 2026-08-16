@@ -66,4 +66,20 @@ class ProjectRepository @Inject constructor(
             ),
         )
     }
+
+    suspend fun update(id: ProjectId, name: String, hue: Int, emoji: String?) {
+        val existing = get(id) ?: return
+        save(existing.copy(name = name.trim(), hue = hue, emoji = emoji))
+    }
+
+    suspend fun reorder(ids: List<ProjectId>) {
+        ids.forEachIndexed { index, id ->
+            val existing = get(id) ?: return@forEachIndexed
+            if (existing.order != index) {
+                projects.upsert(
+                    existing.copy(order = index, updatedAt = Instant.now(), rev = existing.rev + 1, writerId = prefs.installId()).toEntity(),
+                )
+            }
+        }
+    }
 }

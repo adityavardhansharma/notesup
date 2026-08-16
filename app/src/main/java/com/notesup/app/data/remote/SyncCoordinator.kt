@@ -17,11 +17,13 @@ class SyncCoordinator @Inject constructor(
     @ApplicationContext private val context: Context,
     private val auth: AuthRepository,
     private val prefs: NotesupPrefs,
+    private val notes: com.notesup.app.data.repo.NoteRepository,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     fun start() {
         scope.launch {
+            runCatching { notes.purgeTrash() }
             val url = context.getString(R.string.convex_url)
             if (url.contains("placeholder")) return@launch
             if (auth.current() == null) return@launch

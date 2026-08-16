@@ -41,7 +41,15 @@ class NoteCaptureActivity : FragmentActivity() {
         // rotation) must not spawn a second blank note.
         val id = savedInstanceState?.getString(KEY_NOTE_ID) ?: run {
             val stylus = intent?.getBooleanExtra("android.intent.extra.USE_STYLUS_MODE", false) == true
-            val kind = if (stylus) NoteKind.INK else NoteKind.TEXT
+            val kind = if (stylus) {
+                NoteKind.INK
+            } else {
+                when (runBlocking { prefs.defaultKind.first() }) {
+                    "checklist" -> NoteKind.CHECKLIST
+                    "ink" -> NoteKind.INK
+                    else -> NoteKind.TEXT
+                }
+            }
             runBlocking { notes.create(kind) }.id.raw
         }
         noteId = id
