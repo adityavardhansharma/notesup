@@ -84,7 +84,7 @@ class NoteRepository @Inject constructor(
             writerId = install,
         )
         notes.upsertWithFts(bumped.toEntity(), bumped.toFts())
-        queue.enqueue(
+        queue.enqueueLatest(
             SyncQueueEntity(
                 kind = "note",
                 localId = bumped.id.raw,

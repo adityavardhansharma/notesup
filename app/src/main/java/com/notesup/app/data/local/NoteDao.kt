@@ -118,6 +118,16 @@ interface SyncQueueDao {
     @Insert
     suspend fun enqueue(item: SyncQueueEntity)
 
+    @Query("DELETE FROM sync_queue WHERE kind = :kind AND localId = :localId")
+    suspend fun removeFor(kind: String, localId: String)
+
     @Query("DELETE FROM sync_queue WHERE id = :id")
     suspend fun remove(id: Long)
+
+    /** Collapse repeated edits of the same entity into a single pending row. */
+    @Transaction
+    suspend fun enqueueLatest(item: SyncQueueEntity) {
+        removeFor(item.kind, item.localId)
+        enqueue(item)
+    }
 }
