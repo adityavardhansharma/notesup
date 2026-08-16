@@ -53,12 +53,14 @@ class MainActivity : FragmentActivity() {
         runBlocking { prefs.setOnboardingDone(true) }
         val text = intent.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
         val subject = intent.getStringExtra(Intent.EXTRA_SUBJECT).orEmpty()
+        val body = listOf(subject, text).filter { it.isNotBlank() }.joinToString("\n\n")
+        // Image-only shares carry no text and can't be imported yet; don't spawn an
+        // empty untitled note for them.
+        if (body.isBlank()) return
         runBlocking {
-            val body = listOf(subject, text).filter { it.isNotBlank() }.joinToString("\n\n")
             notes.create(
                 kind = NoteKind.TEXT,
-                extraBlocks = if (body.isBlank()) emptyList()
-                else listOf(Block.Paragraph(com.notesup.app.domain.model.BlockId.random(), RichText.of(body))),
+                extraBlocks = listOf(Block.Paragraph(com.notesup.app.domain.model.BlockId.random(), RichText.of(body))),
             )
         }
     }

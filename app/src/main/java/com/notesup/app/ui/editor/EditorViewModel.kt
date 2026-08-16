@@ -110,8 +110,11 @@ class EditorViewModel @Inject constructor(
         notes.get(requireId())?.let { notes.save(it.copy(font = font)) }
     }
 
-    fun delete() = viewModelScope.launch {
-        notes.setDeleted(requireId(), true)
+    fun delete() {
+        // The caller navigates away immediately after delete(), which clears this
+        // ViewModel; run on appScope so the soft-delete write isn't cancelled.
+        val id = requireId()
+        appScope.launch { notes.setDeleted(id, true) }
     }
 
     fun setLocked(locked: Boolean, cipher: ByteArray? = null) = viewModelScope.launch {
