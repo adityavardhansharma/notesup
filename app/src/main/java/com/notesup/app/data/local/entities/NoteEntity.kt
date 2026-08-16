@@ -31,7 +31,7 @@ data class NoteEntity(
 @Entity(tableName = "notes_fts")
 @Fts4
 data class NoteFts(
-    @PrimaryKey
+    @PrimaryKey(autoGenerate = true)
     @ColumnInfo(name = "rowid")
     val rowid: Int = 0,
     val noteId: String,

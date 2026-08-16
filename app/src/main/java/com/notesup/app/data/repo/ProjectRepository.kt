@@ -57,6 +57,13 @@ class ProjectRepository @Inject constructor(
     suspend fun delete(id: ProjectId) {
         val existing = projects.get(id.raw) ?: return
         notes.moveProjectToInbox(id.raw)
-        projects.upsert(existing.copy(deletedAt = System.currentTimeMillis()))
+        projects.upsert(
+            existing.copy(
+                deletedAt = System.currentTimeMillis(),
+                updatedAt = System.currentTimeMillis(),
+                rev = existing.rev + 1,
+                writerId = prefs.installId(),
+            ),
+        )
     }
 }

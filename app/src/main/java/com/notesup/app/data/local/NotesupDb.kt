@@ -18,7 +18,7 @@ import com.notesup.app.data.local.entities.SyncQueueEntity
         InkEntity::class,
         SyncQueueEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class NotesupDb : RoomDatabase() {

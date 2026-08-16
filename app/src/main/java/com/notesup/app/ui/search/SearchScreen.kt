@@ -55,8 +55,13 @@ class SearchViewModel @Inject constructor(private val notes: NoteRepository) : V
     @OptIn(FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val results = query.debounce(40).mapLatest { q ->
         val parsed = SearchQuery.parse(q)
-        val base = if (parsed.text.isBlank() && parsed.verb == null) emptyList()
-        else notes.search(parsed.text.ifBlank { "*" })
+        val base = when {
+            parsed.text.isBlank() && parsed.verb == null -> emptyList()
+            // Verb-only queries (Pinned/Drawings/Images/Locked) have no text to
+            // match, so start from every note and let the verb filter below narrow.
+            parsed.text.isBlank() -> notes.allAlive()
+            else -> notes.search(parsed.text)
+        }
         base.filter { n ->
             when (parsed.verb) {
                 com.notesup.app.domain.op.ParsedSearch.Verb.PIN -> n.pinned

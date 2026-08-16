@@ -40,9 +40,27 @@ import com.notesup.app.ui.common.NuIcon
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
 
 @HiltViewModel
-class SettingsViewModel @Inject constructor(val prefs: NotesupPrefs) : ViewModel()
+class SettingsViewModel @Inject constructor(val prefs: NotesupPrefs) : ViewModel() {
+    fun setHomeView(value: String) = viewModelScope.launch { prefs.setHomeView(value) }
+    fun setSortChecked(value: Boolean) = viewModelScope.launch { prefs.setSortChecked(value) }
+    fun setLockNew(value: Boolean) = viewModelScope.launch { prefs.setLockNew(value) }
+    fun setLockScreenHistory(value: Boolean) = viewModelScope.launch { prefs.setLockScreenHistory(value) }
+}
+
+@HiltViewModel
+class AccountViewModel @Inject constructor(
+    private val auth: com.notesup.app.data.auth.AuthRepository,
+) : ViewModel() {
+    val signedIn = auth.signedIn
+    fun signOut(onDone: () -> Unit) = viewModelScope.launch {
+        auth.signOut()
+        onDone()
+    }
+}
 
 @Composable
 fun SettingsScreen(
@@ -75,22 +93,22 @@ fun SettingsScreen(
             headlineContent = { Text(stringResource(R.string.home_view)) },
             trailingContent = { Text(if (view == "list") stringResource(R.string.list) else stringResource(R.string.grid)) },
             modifier = Modifier.clickable {
-                // toggle via prefs through view model later
+                vm.setHomeView(if (view == "list") "grid" else "list")
             },
         )
         RowItem(stringResource(R.string.focus), focus, onFocus)
         ListItem(
             headlineContent = { Text(stringResource(R.string.sort_checked)) },
-            trailingContent = { Switch(sort, { /* */ }) },
+            trailingContent = { Switch(sort, { vm.setSortChecked(it) }) },
         )
         HorizontalDivider()
         ListItem(
             headlineContent = { Text(stringResource(R.string.lock_new)) },
-            trailingContent = { Switch(lockNew, { }) },
+            trailingContent = { Switch(lockNew, { vm.setLockNew(it) }) },
         )
         ListItem(
             headlineContent = { Text(stringResource(R.string.lock_screen_history)) },
-            trailingContent = { Switch(lockHist, { }) },
+            trailingContent = { Switch(lockHist, { vm.setLockScreenHistory(it) }) },
         )
         ListItem(
             headlineContent = { Text(stringResource(R.string.default_notes)) },
@@ -154,19 +172,27 @@ fun TrashScreen(onBack: () -> Unit) {
 }
 
 @Composable
-fun ManageAccountScreen(onBack: () -> Unit, onSignIn: () -> Unit, onSignOut: () -> Unit) {
+fun ManageAccountScreen(
+    onBack: () -> Unit,
+    onSignIn: () -> Unit,
+    onSignOut: () -> Unit,
+    vm: AccountViewModel = hiltViewModel(),
+) {
     var confirm by remember { mutableStateOf(false) }
+    val signedIn by vm.signedIn.collectAsStateWithLifecycle(false)
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         Bar(onBack, stringResource(R.string.account))
-        TextButtonRow(stringResource(R.string.sign_in), onSignIn)
-        TextButtonRow(stringResource(R.string.sign_out)) { confirm = true }
+        if (!signedIn) TextButtonRow(stringResource(R.string.sign_in), onSignIn)
+        if (signedIn) TextButtonRow(stringResource(R.string.sign_out)) { confirm = true }
     }
     if (confirm) {
         AlertDialog(
             onDismissRequest = { confirm = false },
             title = { Text(stringResource(R.string.sign_out_q)) },
             text = { Text(stringResource(R.string.sign_out_body)) },
-            confirmButton = { TextButton(onClick = { confirm = false; onSignOut() }) { Text(stringResource(R.string.sign_out)) } },
+            confirmButton = {
+                TextButton(onClick = { confirm = false; vm.signOut(onSignOut) }) { Text(stringResource(R.string.sign_out)) }
+            },
             dismissButton = { TextButton(onClick = { confirm = false }) { Text(stringResource(R.string.cancel)) } },
         )
     }

@@ -56,8 +56,10 @@ fun NoteCard(
             .heightIn(min = 148.dp),
     ) {
         note.blocks.filterIsInstance<com.notesup.app.domain.model.Block.Image>().firstOrNull()?.let { img ->
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val file = java.io.File(context.filesDir, "media/${img.mediaId.raw}.jpg")
             AsyncImage(
-                model = img.mediaId.raw,
+                model = file,
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxWidth()

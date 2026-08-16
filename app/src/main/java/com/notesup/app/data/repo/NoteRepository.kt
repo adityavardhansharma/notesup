@@ -40,6 +40,8 @@ class NoteRepository @Inject constructor(
 
     suspend fun get(id: NoteId): Note? = notes.get(id.raw)?.toDomain()
 
+    suspend fun allAlive(): List<Note> = notes.observeAlive().first().map { it.toDomain() }
+
     suspend fun countAlive(): Int = notes.countAlive()
 
     suspend fun create(
@@ -84,7 +86,7 @@ class NoteRepository @Inject constructor(
             writerId = install,
         )
         notes.upsertWithFts(bumped.toEntity(), bumped.toFts())
-        queue.enqueue(
+        queue.enqueueLatest(
             SyncQueueEntity(
                 kind = "note",
                 localId = bumped.id.raw,

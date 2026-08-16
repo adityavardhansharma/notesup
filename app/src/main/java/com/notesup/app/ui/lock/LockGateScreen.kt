@@ -114,7 +114,15 @@ fun LockGateScreen(
         } else {
             Text(stringResource(R.string.unlock_need_lock), color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
             TextButton(onClick = {
-                context.startActivity(Intent(Settings.ACTION_BIOMETRIC_ENROLL))
+                // ACTION_BIOMETRIC_ENROLL only exists on API 30+; on older devices it
+                // throws ActivityNotFoundException, so fall back to security settings.
+                val intent = if (android.os.Build.VERSION.SDK_INT >= 30) {
+                    Intent(Settings.ACTION_BIOMETRIC_ENROLL)
+                } else {
+                    Intent(Settings.ACTION_SECURITY_SETTINGS)
+                }
+                runCatching { context.startActivity(intent) }
+                    .onFailure { runCatching { context.startActivity(Intent(Settings.ACTION_SETTINGS)) } }
             }) { Text(stringResource(R.string.open_settings)) }
         }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }

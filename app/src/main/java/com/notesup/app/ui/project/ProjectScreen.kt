@@ -40,6 +40,7 @@ fun ProjectScreen(
     onOpenNote: (String, Boolean) -> Unit,
     vm: ProjectViewModel = hiltViewModel(),
 ) {
+    androidx.compose.runtime.LaunchedEffect(projectId) { vm.attach(projectId) }
     val project by vm.project.collectAsStateWithLifecycle()
     val notes by vm.notes.collectAsStateWithLifecycle()
     Column(Modifier.fillMaxSize().statusBarsPadding()) {

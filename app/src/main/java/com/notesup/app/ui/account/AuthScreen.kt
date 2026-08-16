@@ -50,6 +50,8 @@ fun AuthScreen(
     error: String? = null,
 ) {
     var email by remember { mutableStateOf("") }
+    var notice by remember { mutableStateOf<String?>(null) }
+    val googleUnavailable = stringResource(R.string.google_unavailable)
     val haptics = rememberHaptics()
     PaperGrain(Modifier.fillMaxSize()) {
         Column(
@@ -79,7 +81,7 @@ fun AuthScreen(
             )
             Spacer(Modifier.height(32.dp))
             OutlinedButton(
-                onClick = { haptics.reject() },
+                onClick = { haptics.reject(); notice = googleUnavailable },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(16.dp),
             ) {
@@ -110,7 +112,7 @@ fun AuthScreen(
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = Stadium,
             ) { Text(stringResource(R.string.continue_email)) }
-            error?.let {
+            (error ?: notice)?.let {
                 Spacer(Modifier.height(8.dp))
                 Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
