@@ -17,6 +17,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.glance.appwidget.updateAll
 import com.notesup.app.R
 import com.notesup.app.data.repo.ProjectRepository
 import com.notesup.app.ui.theme.NotesupTheme
@@ -27,12 +28,15 @@ import javax.inject.Inject
 class ProjectWidgetConfigureActivity : FragmentActivity() {
     @Inject lateinit var projects: ProjectRepository
 
+    @Inject lateinit var prefs: com.notesup.app.data.prefs.NotesupPrefs
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val appWidgetId = intent?.extras?.getInt(
             AppWidgetManager.EXTRA_APPWIDGET_ID,
             AppWidgetManager.INVALID_APPWIDGET_ID,
         ) ?: AppWidgetManager.INVALID_APPWIDGET_ID
+        setResult(Activity.RESULT_CANCELED)
         setContent {
             NotesupTheme {
                 val list by projects.observe().collectAsStateWithLifecycle(emptyList())
@@ -55,6 +59,8 @@ class ProjectWidgetConfigureActivity : FragmentActivity() {
     }
 
     private fun finishOk(id: Int, projectId: String?) {
+        kotlinx.coroutines.runBlocking { prefs.setWidgetProject(id, projectId) }
+        runCatching { kotlinx.coroutines.runBlocking { ProjectWidget().updateAll(this@ProjectWidgetConfigureActivity) } }
         val result = Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
         setResult(Activity.RESULT_OK, result)
         finish()

@@ -126,4 +126,29 @@ class HomeViewModel @Inject constructor(
             onDone()
         }
     }
+
+    fun updateProject(id: String, name: String, hue: Int, emoji: String?, onDone: () -> Unit) {
+        viewModelScope.launch {
+            projects.update(ProjectId(id), name, hue, emoji)
+            onDone()
+        }
+    }
+
+    fun deleteProject(id: String) {
+        viewModelScope.launch { projects.delete(ProjectId(id)) }
+    }
+
+    fun moveSelected(projectId: String?) {
+        viewModelScope.launch {
+            notes.moveToProject(
+                selected.value.map { com.notesup.app.domain.model.NoteId(it) },
+                projectId?.let(::ProjectId),
+            )
+            selected.value = emptySet()
+        }
+    }
+
+    fun reorderProjects(ids: List<String>) {
+        viewModelScope.launch { projects.reorder(ids.map(::ProjectId)) }
+    }
 }

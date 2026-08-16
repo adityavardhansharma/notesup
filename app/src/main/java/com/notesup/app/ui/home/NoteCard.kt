@@ -55,9 +55,13 @@ fun NoteCard(
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .heightIn(min = 148.dp),
     ) {
-        note.blocks.filterIsInstance<com.notesup.app.domain.model.Block.Image>().firstOrNull()?.let { img ->
+        val cover = note.blocks.filterIsInstance<com.notesup.app.domain.model.Block.Image>().firstOrNull()?.let { img ->
             val context = androidx.compose.ui.platform.LocalContext.current
+            val thumb = java.io.File(context.filesDir, "media/${img.mediaId.raw}_t.jpg")
             val file = java.io.File(context.filesDir, "media/${img.mediaId.raw}.jpg")
+            if (thumb.exists()) thumb else file
+        } ?: note.blocks.filterIsInstance<com.notesup.app.domain.model.Block.Ink>().firstOrNull()?.previewPath?.let { java.io.File(it) }
+        cover?.let { file ->
             AsyncImage(
                 model = file,
                 contentDescription = null,
@@ -108,6 +112,7 @@ fun NoteListRow(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
+    supporting: String? = null,
 ) {
     val scheme = MaterialTheme.colorScheme
     Row(
@@ -134,7 +139,7 @@ fun NoteListRow(
         Column(Modifier.weight(1f)) {
             Text(note.displayTitle, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
-                if (note.locked) "Locked note" else note.preview,
+                supporting ?: if (note.locked) "Locked note" else note.preview,
                 style = MaterialTheme.typography.bodyMedium,
                 color = scheme.onSurfaceVariant,
                 maxLines = 1,

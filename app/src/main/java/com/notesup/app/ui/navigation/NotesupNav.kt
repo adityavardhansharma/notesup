@@ -5,8 +5,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
@@ -31,6 +33,7 @@ import com.notesup.app.ui.home.HomeScreen
 import com.notesup.app.ui.onboarding.WelcomeScreen
 import com.notesup.app.ui.project.ProjectScreen
 import com.notesup.app.ui.search.SearchScreen
+import android.net.Uri
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -62,6 +65,20 @@ fun NotesupNav(
         }
     }
 
+    var handledLink by rememberSaveable { mutableStateOf<String?>(null) }
+    androidx.compose.runtime.LaunchedEffect(initialDeepLink) {
+        val link = initialDeepLink ?: return@LaunchedEffect
+        if (link == handledLink) return@LaunchedEffect
+        handledLink = link
+        val uri = runCatching { Uri.parse(link) }.getOrNull() ?: return@LaunchedEffect
+        if (uri.scheme != "notesup") return@LaunchedEffect
+        when (uri.host) {
+            "note" -> uri.pathSegments.firstOrNull()?.let { push(Editor(it, false)) }
+            "project" -> uri.pathSegments.firstOrNull()?.let { push(ProjectDest(it)) }
+            "search" -> push(Search)
+        }
+    }
+
     NavDisplay(
         backStack = backStack,
         onBack = { pop() },
@@ -88,17 +105,30 @@ fun NotesupNav(
                 )
             }
             entry<Auth> {
+                val vm = hiltViewModel<com.notesup.app.ui.account.AuthViewModel>()
+                val err by vm.error.collectAsStateWithLifecycle()
                 AuthScreen(
                     onBack = { pop() },
                     onContinueWithout = ::finishOnboarding,
-                    onEmail = { push(AuthCode(it)) },
+                    onEmail = { vm.startEmail(it) { push(AuthCode(it)) } },
+                    error = err,
+                    onGoogle = { vm.google(::finishOnboarding) },
+                    onPasskey = { vm.passkey(::finishOnboarding) },
                 )
             }
             entry<AuthCode> { key ->
+                val vm = hiltViewModel<com.notesup.app.ui.account.AuthViewModel>()
+                val err by vm.error.collectAsStateWithLifecycle()
+                val busy by vm.busy.collectAsStateWithLifecycle()
+                val resend by vm.resendIn.collectAsStateWithLifecycle()
                 AuthCodeScreen(
                     email = key.email,
                     onBack = { pop() },
-                    onVerify = { finishOnboarding() },
+                    onVerify = { vm.verify(it, ::finishOnboarding) },
+                    verifying = busy,
+                    error = err,
+                    onResend = { vm.resend(key.email) },
+                    resendIn = resend,
                 )
             }
             entry<Search> {
@@ -129,11 +159,11 @@ fun NotesupNav(
                     onAbout = { push(About) },
                 )
             }
-            entry<Appearance> { AppearanceScreen { pop() } }
-            entry<TypeSettings> { TypeSettingsScreen { pop() } }
-            entry<PaperSettings> { PaperSettingsScreen { pop() } }
-            entry<FocusSettings> { FocusSettingsScreen { pop() } }
-            entry<Trash> { TrashScreen { pop() } }
+            entry<Appearance> { AppearanceScreen(onBack = { pop() }) }
+            entry<TypeSettings> { TypeSettingsScreen(onBack = { pop() }) }
+            entry<PaperSettings> { PaperSettingsScreen(onBack = { pop() }) }
+            entry<FocusSettings> { FocusSettingsScreen(onBack = { pop() }) }
+            entry<Trash> { TrashScreen(onBack = { pop() }) }
             entry<ManageAccount> {
                 ManageAccountScreen(onBack = { pop() }, onSignIn = { push(Auth) }, onSignOut = { pop() })
             }

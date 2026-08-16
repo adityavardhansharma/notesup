@@ -1,5 +1,7 @@
 package com.notesup.app.ui.account
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -48,6 +50,8 @@ fun AuthScreen(
     onContinueWithout: () -> Unit,
     onEmail: (String) -> Unit,
     error: String? = null,
+    onGoogle: (() -> Unit)? = null,
+    onPasskey: (() -> Unit)? = null,
 ) {
     var email by remember { mutableStateOf("") }
     var notice by remember { mutableStateOf<String?>(null) }
@@ -81,7 +85,12 @@ fun AuthScreen(
             )
             Spacer(Modifier.height(32.dp))
             OutlinedButton(
-                onClick = { haptics.reject(); notice = googleUnavailable },
+                onClick = {
+                    if (onGoogle != null) onGoogle() else {
+                        haptics.reject()
+                        notice = googleUnavailable
+                    }
+                },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(16.dp),
             ) {
@@ -112,6 +121,16 @@ fun AuthScreen(
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = Stadium,
             ) { Text(stringResource(R.string.continue_email)) }
+            TextButton(onClick = {
+                if (onPasskey != null) onPasskey() else {
+                    haptics.reject()
+                    notice = googleUnavailable
+                }
+            }) {
+                NuIcon(NotesupIcons.Passkey, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.use_passkey))
+            }
             (error ?: notice)?.let {
                 Spacer(Modifier.height(8.dp))
                 Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
@@ -137,6 +156,10 @@ fun AuthCodeScreen(
     email: String,
     onBack: () -> Unit,
     onVerify: (String) -> Unit,
+    verifying: Boolean = false,
+    error: String? = null,
+    onResend: () -> Unit = {},
+    resendIn: Int = 0,
 ) {
     var code by remember { mutableStateOf("") }
     Column(
@@ -155,16 +178,44 @@ fun AuthCodeScreen(
         Text(stringResource(R.string.code_sent), color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(email, style = MaterialTheme.typography.bodyMedium)
         Spacer(Modifier.height(32.dp))
+        Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
+            repeat(6) { i ->
+                val ch = code.getOrNull(i)?.toString() ?: ""
+                Box(
+                    Modifier
+                        .size(44.dp, 52.dp)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(8.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(ch, style = MaterialTheme.typography.titleLarge)
+                }
+            }
+        }
         OutlinedTextField(
             value = code,
             onValueChange = {
-                if (it.length <= 6 && it.all(Char::isDigit)) {
+                if (it.length <= 6 && it.all(Char::isDigit) && !verifying) {
                     code = it
                     if (it.length == 6) onVerify(it)
                 }
             },
+            enabled = !verifying,
             label = { Text(stringResource(R.string.code_cd)) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+            modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
         )
+        if (verifying) {
+            androidx.compose.material3.CircularProgressIndicator(Modifier.size(24.dp).padding(top = 12.dp))
+        }
+        error?.let {
+            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
+        }
+        if (resendIn > 0) {
+            Text(stringResource(R.string.resend_in, resendIn), style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 16.dp))
+        } else {
+            TextButton(onClick = onResend, modifier = Modifier.padding(top = 8.dp)) {
+                Text(stringResource(R.string.resend))
+            }
+        }
     }
 }

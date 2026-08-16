@@ -40,6 +40,12 @@ interface NoteDao {
     @Query("SELECT COUNT(*) FROM notes WHERE deletedAt IS NULL")
     suspend fun countAlive(): Int
 
+    @Query("SELECT COUNT(*) FROM notes WHERE projectId IS NULL AND deletedAt IS NULL")
+    fun observeInboxCount(): Flow<Int>
+
+    @Query("DELETE FROM notes WHERE id = :id")
+    suspend fun hardDelete(id: String)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(note: NoteEntity)
 

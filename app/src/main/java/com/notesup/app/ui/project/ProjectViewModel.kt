@@ -27,22 +27,45 @@ class ProjectViewModel @Inject constructor(
     // supplied explicitly by the screen (mirrors EditorViewModel.attach).
     private val idFlow = MutableStateFlow<ProjectId?>(null)
 
-    fun attach(id: String) {
-        if (idFlow.value == null) idFlow.value = ProjectId(id)
-    }
+    private val rawId = MutableStateFlow<String?>(null)
 
-    val project = idFlow.filterNotNull()
-        .mapLatest { projects.get(it) }
+    fun attach(id: String) {
+        if (rawId.value == null) {
+            rawId.value = id
+            idFlow.value = if (id == INBOX) null else ProjectId(id)
+        }
+    }
+    val isInbox: Boolean get() = rawId.value == INBOX
+
+    val project = rawId.filterNotNull()
+        .mapLatest { if (it == INBOX) null else projects.get(ProjectId(it)) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    val notes = idFlow.filterNotNull()
-        .flatMapLatest { noteRepo.observeProject(it) }
+    val notes = rawId.filterNotNull()
+        .flatMapLatest { noteRepo.observeProject(if (it == INBOX) null else ProjectId(it)) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    fun create(kind: NoteKind, projectId: ProjectId, onReady: (String) -> Unit) {
+    fun create(kind: NoteKind, projectId: ProjectId?, onReady: (String) -> Unit) {
         viewModelScope.launch {
             val n = noteRepo.create(kind, projectId)
             onReady(n.id.raw)
         }
+    }
+
+    fun update(name: String, hue: Int, emoji: String?) {
+        val id = idFlow.value ?: return
+        viewModelScope.launch { projects.update(id, name, hue, emoji) }
+    }
+
+    fun delete(onDone: () -> Unit) {
+        val id = idFlow.value ?: return
+        viewModelScope.launch {
+            projects.delete(id)
+            onDone()
+        }
+    }
+
+    companion object {
+        const val INBOX = "inbox"
     }
 }

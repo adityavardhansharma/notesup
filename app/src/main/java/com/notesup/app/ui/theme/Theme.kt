@@ -92,6 +92,73 @@ private val DieciScheme = DarkScheme.copy(
     surfaceContainerLowest = Color(0xFF000000),
 )
 
+private val InkScheme = DarkScheme.copy(
+    background = Color(0xFF0C0A09),
+    surface = Color(0xFF0C0A09),
+    primary = Color(0xFFE7E5E4),
+    onPrimary = Color(0xFF1C1917),
+)
+
+private val MidnightScheme = DarkScheme.copy(
+    background = Color(0xFF0B1220),
+    surface = Color(0xFF0B1220),
+    primary = Color(0xFF93C5FD),
+    primaryContainer = Color(0xFF1E3A5F),
+)
+
+private val SlateScheme = DarkScheme.copy(
+    background = Color(0xFF1C1F24),
+    surface = Color(0xFF1C1F24),
+    primary = Color(0xFFA8B4C4),
+    primaryContainer = Color(0xFF2A313C),
+)
+
+private val GraphiteScheme = LightScheme.copy(
+    background = Color(0xFFE8E6E3),
+    surface = Color(0xFFE8E6E3),
+    primary = Color(0xFF3F3F46),
+)
+
+private val NoonScheme = LightScheme.copy(
+    background = Color(0xFFFFFBF5),
+    surface = Color(0xFFFFFBF5),
+    primary = Color(0xFFB45309),
+)
+
+private val FogScheme = LightScheme.copy(
+    background = Color(0xFFF1F4F7),
+    surface = Color(0xFFF1F4F7),
+    primary = Color(0xFF475569),
+)
+
+private val LegalScheme = LightScheme.copy(
+    background = Color(0xFFF6EFD4),
+    surface = Color(0xFFF6EFD4),
+    primary = Color(0xFF5B4A1E),
+)
+
+private val KraftScheme = LightScheme.copy(
+    background = Color(0xFFE8D5B5),
+    surface = Color(0xFFE8D5B5),
+    primary = Color(0xFF6B3F1D),
+)
+
+data class ThemeOption(val key: String, val labelRes: Int, val swatchSurface: Color, val swatchPrimary: Color)
+
+val AppThemeOptions = listOf(
+    ThemeOption("dynamic", com.notesup.app.R.string.theme_dynamic, Color(0xFFE8DEF8), Color(0xFF6750A4)),
+    ThemeOption("dieci", com.notesup.app.R.string.theme_dieci, Color(0xFF000000), Color(0xFFFFB2C0)),
+    ThemeOption("ink", com.notesup.app.R.string.theme_ink, Color(0xFF0C0A09), Color(0xFFE7E5E4)),
+    ThemeOption("midnight", com.notesup.app.R.string.theme_midnight, Color(0xFF0B1220), Color(0xFF93C5FD)),
+    ThemeOption("slate", com.notesup.app.R.string.theme_slate, Color(0xFF1C1F24), Color(0xFFA8B4C4)),
+    ThemeOption("paper", com.notesup.app.R.string.theme_paper, Color(0xFFF6F1EA), Color(0xFF8B2942)),
+    ThemeOption("graphite", com.notesup.app.R.string.theme_graphite, Color(0xFFE8E6E3), Color(0xFF3F3F46)),
+    ThemeOption("noon", com.notesup.app.R.string.theme_noon, Color(0xFFFFFBF5), Color(0xFFB45309)),
+    ThemeOption("fog", com.notesup.app.R.string.theme_fog, Color(0xFFF1F4F7), Color(0xFF475569)),
+    ThemeOption("legal", com.notesup.app.R.string.theme_legal, Color(0xFFF6EFD4), Color(0xFF5B4A1E)),
+    ThemeOption("kraft", com.notesup.app.R.string.theme_kraft, Color(0xFFE8D5B5), Color(0xFF6B3F1D)),
+)
+
 fun Color.harmonize(seed: Color): Color {
     val out = Blend.harmonize(this.toArgb(), seed.toArgb())
     return Color(out)
@@ -130,16 +197,22 @@ fun NotesupTheme(
     val context = LocalContext.current
     val scheme = when (appTheme) {
         "dieci" -> DieciScheme
+        "ink" -> InkScheme
+        "midnight" -> MidnightScheme
+        "slate" -> SlateScheme
+        "paper" -> LightScheme
+        "graphite" -> GraphiteScheme
+        "noon" -> NoonScheme
+        "fog" -> FogScheme
+        "legal" -> LegalScheme
+        "kraft" -> KraftScheme
         "dynamic" -> if (Build.VERSION.SDK_INT >= 31) {
             val dyn = if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
             dyn.harmonized(Seed)
         } else {
             if (dark) DarkScheme else LightScheme
         }
-        "ink", "midnight", "slate" -> DarkScheme
-        else -> if (dark && appTheme != "paper" && appTheme != "graphite" && appTheme != "noon" &&
-            appTheme != "fog" && appTheme != "legal" && appTheme != "kraft"
-        ) DarkScheme else LightScheme
+        else -> if (dark) DarkScheme else LightScheme
     }
 
     MaterialExpressiveTheme(
