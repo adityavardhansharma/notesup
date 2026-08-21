@@ -157,6 +157,12 @@ fun EditorScreen(
         }
     }
 
+    LaunchedEffect(vm) {
+        vm.notice.collect { res ->
+            android.widget.Toast.makeText(context, context.getString(res), android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
+
     LaunchedEffect(created) {
         if (created) {
             delay(30)

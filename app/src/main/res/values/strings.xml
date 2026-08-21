@@ -26,6 +26,8 @@
     <string name="menu_move">Move to project</string>
     <string name="menu_color">Note color</string>
     <string name="menu_lock">Lock</string>
+    <string name="lock_needs_screen_lock">Set a screen lock on this phone to lock notes.</string>
+    <string name="save_failed">Couldn't save that change.</string>
     <string name="menu_unlock">Unlock</string>
     <string name="menu_md">Export Markdown</string>
     <string name="menu_pdf">Export PDF</string>
