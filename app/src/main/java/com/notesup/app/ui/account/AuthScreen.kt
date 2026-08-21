@@ -49,9 +49,10 @@ fun AuthScreen(
     onBack: () -> Unit,
     onContinueWithout: () -> Unit,
     onEmail: (String) -> Unit,
-    error: String? = null,
+    error: Int? = null,
     onGoogle: (() -> Unit)? = null,
     onPasskey: (() -> Unit)? = null,
+    syncConfigured: Boolean = true,
 ) {
     var email by remember { mutableStateOf("") }
     var notice by remember { mutableStateOf<String?>(null) }
@@ -77,7 +78,7 @@ fun AuthScreen(
             Text(stringResource(R.string.sign_in_to_sync), style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(4.dp))
             Text(
-                stringResource(R.string.sign_in_body),
+                stringResource(if (syncConfigured) R.string.sign_in_body else R.string.sync_not_configured),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -91,12 +92,20 @@ fun AuthScreen(
                         notice = googleUnavailable
                     }
                 },
+                enabled = syncConfigured,
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(16.dp),
             ) {
                 NuIcon(NotesupIcons.Google, null, Modifier.size(20.dp), tint = androidx.compose.ui.graphics.Color.Unspecified)
                 Spacer(Modifier.width(12.dp))
-                Text(stringResource(R.string.continue_google), color = MaterialTheme.colorScheme.onSurface)
+                Text(
+                    stringResource(R.string.continue_google),
+                    color = if (syncConfigured) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    },
+                )
             }
             Spacer(Modifier.height(16.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -110,6 +119,7 @@ fun AuthScreen(
                 onValueChange = { email = it },
                 label = { Text(stringResource(R.string.email_hint)) },
                 singleLine = true,
+                enabled = syncConfigured,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Go),
@@ -117,11 +127,11 @@ fun AuthScreen(
             Spacer(Modifier.height(12.dp))
             Button(
                 onClick = { onEmail(email.trim()) },
-                enabled = email.contains("@"),
+                enabled = syncConfigured && email.contains("@"),
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = Stadium,
             ) { Text(stringResource(R.string.continue_email)) }
-            TextButton(onClick = {
+            TextButton(enabled = syncConfigured, onClick = {
                 if (onPasskey != null) onPasskey() else {
                     haptics.reject()
                     notice = googleUnavailable
@@ -131,7 +141,7 @@ fun AuthScreen(
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.use_passkey))
             }
-            (error ?: notice)?.let {
+            (error?.let { stringResource(it) } ?: notice)?.let {
                 Spacer(Modifier.height(8.dp))
                 Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
@@ -157,7 +167,7 @@ fun AuthCodeScreen(
     onBack: () -> Unit,
     onVerify: (String) -> Unit,
     verifying: Boolean = false,
-    error: String? = null,
+    error: Int? = null,
     onResend: () -> Unit = {},
     resendIn: Int = 0,
 ) {
@@ -208,7 +218,7 @@ fun AuthCodeScreen(
             androidx.compose.material3.CircularProgressIndicator(Modifier.size(24.dp).padding(top = 12.dp))
         }
         error?.let {
-            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
+            Text(stringResource(it), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
         }
         if (resendIn > 0) {
             Text(stringResource(R.string.resend_in, resendIn), style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 16.dp))

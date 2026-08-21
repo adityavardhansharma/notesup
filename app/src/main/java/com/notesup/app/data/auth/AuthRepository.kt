@@ -12,6 +12,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 
+/** No sync backend is configured in this build, so no sign-in method can work. */
+class SyncNotConfiguredException : Exception("No sync backend is configured in this build")
+
 data class AuthUser(
     val id: String,
     val email: String?,
@@ -26,6 +29,9 @@ class AuthRepository @Inject constructor(
 ) {
     private val _user = MutableStateFlow<AuthUser?>(null)
     val user: Flow<AuthUser?> = _user.asStateFlow()
+
+    /** False when this build ships without a Clerk publishable key: sync cannot work. */
+    val syncConfigured: Boolean = BuildConfig.CLERK_PK.isNotBlank()
     val signedIn: Flow<Boolean> = user.combine(prefs.syncPaused) { u, _ -> u != null }
 
     fun initialize() {
@@ -48,21 +54,13 @@ class AuthRepository @Inject constructor(
         _user.value = null
     }
 
-    suspend fun signInGoogle(): Result<AuthUser> = runCatching {
-        error("Clerk Google requires a publishable key and Native API.")
-    }
+    suspend fun signInGoogle(): Result<AuthUser> = Result.failure(SyncNotConfiguredException())
 
-    suspend fun startEmail(email: String): Result<Unit> = runCatching {
-        error("Clerk email requires a publishable key.")
-    }
+    suspend fun startEmail(email: String): Result<Unit> = Result.failure(SyncNotConfiguredException())
 
-    suspend fun verifyEmail(code: String): Result<AuthUser> = runCatching {
-        error("Clerk verify requires a publishable key.")
-    }
+    suspend fun verifyEmail(code: String): Result<AuthUser> = Result.failure(SyncNotConfiguredException())
 
-    suspend fun signInPasskey(): Result<AuthUser> = runCatching {
-        error("Clerk passkey requires a publishable key.")
-    }
+    suspend fun signInPasskey(): Result<AuthUser> = Result.failure(SyncNotConfiguredException())
 
     suspend fun deleteAccount(): Result<Unit> = runCatching {
         runCatching { Clerk.auth.signOut() }

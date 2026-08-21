@@ -4,6 +4,8 @@ import android.net.Uri
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.notesup.app.R
+import com.notesup.app.data.crypto.LockUnavailableException
 import com.notesup.app.data.prefs.NotesupPrefs
 import com.notesup.app.data.repo.MediaRepository
 import com.notesup.app.data.repo.NoteRepository
@@ -24,7 +26,9 @@ import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
@@ -145,9 +149,20 @@ class EditorViewModel @Inject constructor(
         appScope.launch {
             val current = notes.get(id) ?: return@launch
             val folded = current.copy(title = title, blocks = fold(snap, current.blocks))
-            notes.save(transform(folded))
+            // A save must never take the process down: locking depends on Keystore,
+            // which fails on a device with no screen lock.
+            runCatching { notes.save(transform(folded)) }.onFailure { err ->
+                _notice.tryEmit(
+                    if (err is LockUnavailableException) R.string.lock_needs_screen_lock else R.string.save_failed,
+                )
+            }
         }
     }
+
+    private val _notice = MutableSharedFlow<Int>(extraBufferCapacity = 1)
+
+    /** One-shot user-facing messages, as string resource ids. */
+    val notice: SharedFlow<Int> = _notice
 
     fun autosave() = commit()
 
@@ -216,12 +231,21 @@ class EditorViewModel @Inject constructor(
     fun setPaper(paper: String) = commit { it.copy(paper = paper) }
     fun setFont(font: String?) = commit { it.copy(font = font) }
 
-    fun setLocked(locked: Boolean) = commit { note ->
-        if (locked) {
-            unlockedCacheKeep(note)
-            note.copy(locked = true)
-        } else {
-            note.copy(locked = false, lockCipher = null)
+    /** True when this device can hold a note-lock key (it needs a screen lock). */
+    fun canLock(): Boolean = notes.canLock()
+
+    fun setLocked(locked: Boolean) {
+        if (locked && !notes.canLock()) {
+            _notice.tryEmit(R.string.lock_needs_screen_lock)
+            return
+        }
+        commit { note ->
+            if (locked) {
+                unlockedCacheKeep(note)
+                note.copy(locked = true)
+            } else {
+                note.copy(locked = false, lockCipher = null)
+            }
         }
     }
 
