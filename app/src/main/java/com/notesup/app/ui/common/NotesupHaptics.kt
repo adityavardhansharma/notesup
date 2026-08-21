@@ -32,12 +32,12 @@ class NotesupHaptics(private val view: View) {
                     .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK)
                     .compose()
             }.getOrNull()
-            if (composed != null) {
-                vibrator?.vibrate(composed)
+            val vib = vibrator
+            if (composed != null && vib != null && runCatching { vib.vibrate(composed) }.isSuccess) {
                 return
             }
         }
-        view.performHapticFeedback(constant)
+        runCatching { view.performHapticFeedback(constant) }
     }
 }
 
