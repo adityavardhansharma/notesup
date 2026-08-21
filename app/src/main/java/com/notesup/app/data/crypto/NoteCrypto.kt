@@ -1,8 +1,12 @@
 package com.notesup.app.data.crypto
 
+import android.app.KeyguardManager
+import android.content.Context
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import androidx.core.content.getSystemService
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -11,13 +15,29 @@ import javax.crypto.spec.GCMParameterSpec
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/** Note locking is unavailable on this device (no screen lock, or Keystore refused). */
+class LockUnavailableException(cause: Throwable? = null) :
+    Exception("Note lock keys require a device screen lock", cause)
+
 /**
  * AES-GCM key in the Android Keystore. User authentication is required to use
  * the key (biometric or device credential), matching LockGateScreen.
  */
 @Singleton
-class NoteCrypto @Inject constructor() {
+class NoteCrypto @Inject constructor(
+    @ApplicationContext private val context: Context,
+) {
+    /**
+     * Whether a lock key can exist at all. The Keystore refuses to create a key
+     * with [KeyGenParameterSpec.Builder.setUserAuthenticationRequired] unless the
+     * device has a secure screen lock, so locking is offered only when it does.
+     */
+    fun available(): Boolean =
+        runCatching { context.getSystemService<KeyguardManager>()?.isDeviceSecure == true }
+            .getOrDefault(false)
+
     fun encrypt(plain: ByteArray): ByteArray {
+        if (!available()) throw LockUnavailableException()
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, key())
         val iv = cipher.iv

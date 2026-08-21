@@ -6,6 +6,7 @@ import com.notesup.app.data.local.toDomain
 import com.notesup.app.data.local.toEntity
 import com.notesup.app.data.local.toFts
 import com.notesup.app.data.local.SyncQueueDao
+import com.notesup.app.data.crypto.LockUnavailableException
 import com.notesup.app.data.prefs.NotesupPrefs
 import com.notesup.app.domain.model.Block
 import com.notesup.app.domain.model.Note
@@ -133,13 +134,23 @@ class NoteRepository @Inject constructor(
         }.getOrDefault(false)
     }
 
+    /** Whether this device can hold a note lock key at all. */
+    fun canLock(): Boolean = crypto.available()
+
     /**
      * Encrypt body into [Note.lockCipher] and blank the stored blocks.
-     * Throws if Keystore cannot encrypt so a locked row is never written as plaintext.
+     * Throws [LockUnavailableException] if Keystore cannot encrypt, so a locked
+     * row is never written as plaintext.
+     *
+     * A locked note that is already stored carries its ciphertext and no blocks;
+     * metadata-only writes (pin, move, trash) reuse that ciphertext rather than
+     * re-encrypting, which would otherwise fail on every locked note.
      */
     private fun persistLocked(note: Note): Note {
+        if (note.blocks.isEmpty() && note.lockCipher != null) return note
         val json = com.notesup.app.data.local.Jsons.blocks.encodeToString(note.blocks)
-        val cipher = crypto.encrypt(json.toByteArray())
+        val cipher = runCatching { crypto.encrypt(json.toByteArray()) }
+            .getOrElse { throw if (it is LockUnavailableException) it else LockUnavailableException(it) }
         return note.copy(lockCipher = cipher, blocks = emptyList())
     }
 
