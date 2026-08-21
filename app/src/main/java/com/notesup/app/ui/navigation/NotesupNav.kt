@@ -114,6 +114,7 @@ fun NotesupNav(
                     error = err,
                     onGoogle = { vm.google(::finishOnboarding) },
                     onPasskey = { vm.passkey(::finishOnboarding) },
+                    syncConfigured = vm.syncConfigured,
                 )
             }
             entry<AuthCode> { key ->

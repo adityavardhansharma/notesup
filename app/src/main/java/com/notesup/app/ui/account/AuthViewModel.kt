@@ -2,7 +2,9 @@ package com.notesup.app.ui.account
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.notesup.app.R
 import com.notesup.app.data.auth.AuthRepository
+import com.notesup.app.data.auth.SyncNotConfiguredException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Job
@@ -14,7 +16,11 @@ import kotlinx.coroutines.launch
 class AuthViewModel @Inject constructor(
     private val auth: AuthRepository,
 ) : ViewModel() {
-    val error = MutableStateFlow<String?>(null)
+    /** User-facing message as a string resource id, never a developer message. */
+    val error = MutableStateFlow<Int?>(null)
+
+    /** False when this build has no sync backend, so sign-in is offered as unavailable. */
+    val syncConfigured: Boolean = auth.syncConfigured
     val busy = MutableStateFlow(false)
     val resendIn = MutableStateFlow(0)
     private var countdown: Job? = null
@@ -30,7 +36,7 @@ class AuthViewModel @Inject constructor(
                     startCountdown()
                     onSent()
                 },
-                onFailure = { error.value = it.message ?: "Couldn't sign in." },
+                onFailure = { error.value = messageFor(it) },
             )
         }
     }
@@ -43,7 +49,9 @@ class AuthViewModel @Inject constructor(
             busy.value = false
             result.fold(
                 onSuccess = { onOk() },
-                onFailure = { error.value = "That code didn't match" },
+                onFailure = {
+                    error.value = if (it is SyncNotConfiguredException) R.string.sync_not_configured else R.string.code_mismatch
+                },
             )
         }
     }
@@ -54,7 +62,7 @@ class AuthViewModel @Inject constructor(
             error.value = null
             val result = auth.signInGoogle()
             busy.value = false
-            result.fold(onSuccess = { onOk() }, onFailure = { error.value = it.message })
+            result.fold(onSuccess = { onOk() }, onFailure = { error.value = messageFor(it) })
         }
     }
 
@@ -64,9 +72,12 @@ class AuthViewModel @Inject constructor(
             error.value = null
             val result = auth.signInPasskey()
             busy.value = false
-            result.fold(onSuccess = { onOk() }, onFailure = { error.value = it.message })
+            result.fold(onSuccess = { onOk() }, onFailure = { error.value = messageFor(it) })
         }
     }
+
+    private fun messageFor(err: Throwable): Int =
+        if (err is SyncNotConfiguredException) R.string.sync_not_configured else R.string.sign_in_failed
 
     fun resend(email: String) {
         startEmail(email) { }

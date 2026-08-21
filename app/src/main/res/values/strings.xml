@@ -27,7 +27,7 @@
     <string name="menu_color">Note color</string>
     <string name="menu_lock">Lock</string>
     <string name="lock_needs_screen_lock">Set a screen lock on this phone to lock notes.</string>
-    <string name="save_failed">Couldn't save that change.</string>
+    <string name="save_failed">Couldn\'t save that change.</string>
     <string name="menu_unlock">Unlock</string>
     <string name="menu_md">Export Markdown</string>
     <string name="menu_pdf">Export PDF</string>
@@ -42,6 +42,8 @@
     <string name="sign_in_to_sync">Sign in to sync</string>
     <string name="sign_in_body">Notes stay on this phone until you do.</string>
     <string name="continue_google">Continue with Google</string>
+    <string name="sync_not_configured">Sync isn\'t set up in this build. Your notes stay on this phone.</string>
+    <string name="sign_in_failed">Couldn\'t sign in. Try again.</string>
     <string name="google_unavailable">Google sign-in isn\'t available yet — use email instead.</string>
     <string name="continue_email">Continue</string>
     <string name="continue_without">Continue without an account</string>
